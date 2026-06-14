@@ -1,0 +1,29 @@
+{
+  "MotionElements.mp3|Hard": {
+    "song": "MotionElements.mp3",
+    "difficulty": "Hard",
+    "score": 2054,
+    "max_combo": 9,
+    "perfect": 15,
+    "good": 9,
+    "miss": 5
+  },
+  "corporate-sunrise-logo.mp3|Hard": {
+    "song": "corporate-sunrise-logo.mp3",
+    "difficulty": "Hard",
+    "score": 4834,
+    "max_combo": 43,
+    "perfect": 27,
+    "good": 19,
+    "miss": 5
+  },
+  "MotionElements.mp3|Easy": {
+    "song": "MotionElements.mp3",
+    "difficulty": "Easy",
+    "score": 0,
+    "max_combo": 0,
+    "perfect": 0,
+    "good": 0,
+    "miss": 15
+  }
+}
