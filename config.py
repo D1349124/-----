@@ -56,3 +56,10 @@ DIFFICULTIES = {
     "Normal": {"speed": 4.0, "max_miss": 10, "spawn_interval": 90},
     "Hard":   {"speed": 6.0, "max_miss": 5,  "spawn_interval": 70},
 }
+
+# ===== 匯入分析提示 =====
+IMPORT_TIPS = [
+    "ANALYZING BEAT PATTERN...",
+    "DETECTING TEMPO...",
+    "BUILDING NOTE MAP...",
+]

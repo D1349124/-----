@@ -57,6 +57,8 @@ class GameEngine:
         self.miss_count    = 0
         self.perfect_count = 0   # ✅ 新增
         self.good_count    = 0   # ✅ 新增
+        self._finish_timer       = 0
+        self.FINISH_DELAY_FRAMES = 90 
         self._gesture_cooldown       = {i: 0 for i in range(LANE_COUNT)}
         self.GESTURE_COOLDOWN_FRAMES = 8
 
@@ -174,3 +176,13 @@ class GameEngine:
             jr.alpha    -= 5
             jr.y_offset -= 1
         self.judge_results = [jr for jr in self.judge_results if jr.alpha > 0]
+
+    def check_song_finished(self) -> bool:
+        """所有方格清空後，緩 1~2 秒才視為過關，避免結算太突然"""
+        if not pygame.mixer.music.get_busy() and len(self.tiles) == 0 and self.frame_count > 60:
+            self._finish_timer += 1
+            if self._finish_timer >= self.FINISH_DELAY_FRAMES:
+                return True
+        else:
+            self._finish_timer = 0   # 還有方格或音樂還在播，重置計時
+        return False

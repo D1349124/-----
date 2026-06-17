@@ -2,11 +2,11 @@
   "MotionElements.mp3|Hard": {
     "song": "MotionElements.mp3",
     "difficulty": "Hard",
-    "score": 2054,
-    "max_combo": 9,
-    "perfect": 15,
-    "good": 9,
-    "miss": 5
+    "score": 3096,
+    "max_combo": 33,
+    "perfect": 16,
+    "good": 17,
+    "miss": 0
   },
   "corporate-sunrise-logo.mp3|Hard": {
     "song": "corporate-sunrise-logo.mp3",
@@ -20,10 +20,19 @@
   "MotionElements.mp3|Easy": {
     "song": "MotionElements.mp3",
     "difficulty": "Easy",
+    "score": 1350,
+    "max_combo": 8,
+    "perfect": 0,
+    "good": 27,
+    "miss": 6
+  },
+  "serious-melodic-piano.mp3|Hard": {
+    "song": "serious-melodic-piano.mp3",
+    "difficulty": "Hard",
     "score": 0,
     "max_combo": 0,
     "perfect": 0,
     "good": 0,
-    "miss": 15
+    "miss": 5
   }
 }

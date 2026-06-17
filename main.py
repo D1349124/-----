@@ -9,6 +9,7 @@ from gesture_input import GestureInput
 from renderer import Renderer
 from beatmap import load_beatmap
 from leaderboard import save_record, get_record, get_rank
+from analyze_thread import BeatmapAnalyzer, open_file_dialog
 from config import FPS, SCREEN_WIDTH, SCREEN_HEIGHT, COUNTDOWN_SECONDS, MUSIC_DIR, DIFFICULTIES
 
 
@@ -16,6 +17,7 @@ class GameState(Enum):
     MENU        = auto()
     SETTINGS    = auto()
     SONG_SELECT = auto()
+    IMPORTING   = auto()   # ✅ 新增：分析中畫面
     DIFFICULTY  = auto()
     COUNTDOWN   = auto()
     PLAYING     = auto()
@@ -31,6 +33,14 @@ def load_song_list() -> list[str]:
         f for f in os.listdir(MUSIC_DIR)
         if f.lower().endswith(".mp3")
     ])
+
+
+def get_song_length(filepath: str) -> float:
+    try:
+        sound = pygame.mixer.Sound(filepath)
+        return sound.get_length()
+    except Exception:
+        return 0.0
 
 
 def main():
@@ -56,7 +66,9 @@ def main():
     volume          = 0.8
     pygame.mixer.music.set_volume(volume)
 
-    # ✅ 結算用暫存
+    song_length = 0.0
+    analyzer    = None   # ✅ 目前執行中的分析器
+
     last_rank   = "D"
     last_record = None
 
@@ -80,26 +92,9 @@ def main():
                         state = GameState.PLAYING
                     elif state == GameState.SETTINGS:
                         state = prev_state
-                        if prev_state == GameState.PAUSED:
-                            pass
                     elif state not in (GameState.PLAYING, GameState.PAUSED,
-                                       GameState.SETTINGS):
+                                       GameState.SETTINGS, GameState.IMPORTING):
                         running = False
-
-                if state == GameState.GAME_OVER:
-                    if event.key == pygame.K_r:
-                        diff = DIFFICULTIES[selected_diff]
-                        engine.apply_difficulty(diff)
-                        engine.reset()
-                        engine.reset_beatmap_index()
-                        state           = GameState.COUNTDOWN
-                        countdown_start = time.time()
-                    if event.key == pygame.K_m:
-                        engine.reset()
-                        pygame.mixer.music.stop()
-                        song_list     = load_song_list()
-                        scroll_offset = 0
-                        state         = GameState.MENU
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_click = True
@@ -133,12 +128,47 @@ def main():
             )
             if result == "back":
                 state = GameState.MENU
+            elif result == "import":
+                # ✅ 開啟系統檔案選擇視窗
+                path = open_file_dialog()
+                if path:
+                    analyzer = BeatmapAnalyzer(path)
+                    analyzer.start()
+                    state = GameState.IMPORTING
             elif result is not None:
                 selected_song = result
                 notes = load_beatmap(selected_song)
                 engine.set_beatmap(notes)
                 engine.reset()
+                if notes:
+                    extra_buffer = 200 / 3.0 / 60 + 2.0
+                    song_length = notes[-1]["time"] + extra_buffer
+                else:
+                    song_length = get_song_length(os.path.join(MUSIC_DIR, selected_song))
                 state = GameState.DIFFICULTY
+
+        elif state == GameState.IMPORTING:
+            renderer.draw_importing()
+            if analyzer and analyzer.is_done():
+                if analyzer.is_error():
+                    # 分析失敗，顯示錯誤後返回選歌
+                    print(f"[Import Error] {analyzer.is_error()}")
+                    analyzer = None
+                    song_list = load_song_list()
+                    state = GameState.SONG_SELECT
+                else:
+                    # ✅ 分析成功，自動選中這首新歌
+                    new_song      = analyzer.result_filename()
+                    selected_song = new_song
+                    song_list     = load_song_list()
+                    notes         = load_beatmap(new_song)
+                    engine.set_beatmap(notes)
+                    engine.reset()
+                    if notes:
+                        extra_buffer = 200 / 3.0 / 60 + 2.0
+                        song_length = notes[-1]["time"] + extra_buffer
+                    analyzer = None
+                    state = GameState.DIFFICULTY
 
         elif state == GameState.DIFFICULTY:
             result = renderer.draw_difficulty(selected_diff, mouse_pos, mouse_click)
@@ -168,10 +198,18 @@ def main():
         elif state == GameState.PLAYING:
             gesture = gesture_input.consume_gesture()
             engine.update(gesture)
-            renderer.draw(engine)
-            if engine.game_over:
+
+            current_pos = pygame.mixer.music.get_pos() / 1000.0
+            progress = 0.0
+            if song_length > 0 and current_pos > 0:
+                progress = min(1.0, current_pos / song_length)
+            elif engine.check_song_finished():
+                progress = 1.0
+
+            renderer.draw(engine, progress)
+
+            if engine.game_over or engine.check_song_finished():
                 pygame.mixer.music.stop()
-                # ✅ 儲存紀錄並計算等級
                 save_record(
                     selected_song, selected_diff,
                     engine.score, engine.max_combo,
@@ -206,7 +244,6 @@ def main():
                 state         = GameState.MENU
 
         elif state == GameState.GAME_OVER:
-            # ✅ 傳入統計與等級
             result = renderer.draw_game_over(
                 engine, last_rank, last_record, mouse_pos, mouse_click
             )

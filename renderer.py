@@ -10,8 +10,7 @@ GB_3 = (74, 140,  92)   # 亮：強調/填充
 GB_4 = (184, 216, 176)  # 最亮：文字/高亮
 GB_5 = (232, 240, 224)  # 近白：最高亮文字
 
-FONT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                         "PressStart2P-Regular.ttf")
+FONT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "PressStart2P-Regular.ttf")
 
 
 def _px(surface, color, rect, border=0, inner=False):
@@ -72,7 +71,7 @@ class Renderer:
             for i in range(LANE_COUNT)
         ]
 
-        base = os.path.dirname(os.path.abspath(__file__))
+        base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
         icon_files = ["3.png", "2.png", "1.png"]
         self.icons_large  = []
         self.icons_medium = []
@@ -295,6 +294,15 @@ class Renderer:
             return "back"
         self._btn_back.draw(self.screen, mouse_pos)
 
+        btn_import = Button(
+            pygame.Rect(SCREEN_WIDTH - 220, 12, 196, 36),
+            "+ IMPORT SONG", self.font_hint
+        )
+        if btn_import.is_clicked(mouse_pos, mouse_click):
+            pygame.display.flip()
+            return "import"
+        btn_import.draw(self.screen, mouse_pos)
+
         if not song_list:
             msg = self.font_small.render('NO MP3 IN music/', False, GB_3)
             self.screen.blit(msg,
@@ -485,12 +493,46 @@ class Renderer:
                          (SCREEN_WIDTH // 2 - hint.get_width() // 2, 380))
 
         pygame.display.flip()
+    def draw_importing(self):
+        """匯入新歌分析中的等待畫面，帶轉動動畫"""
+        self.screen.fill(GB_0)
+        self._draw_pixel_grid()
+
+        main_rect = pygame.Rect(24, 20, SCREEN_WIDTH - 48, SCREEN_HEIGHT - 40)
+        self._win_border(main_rect)
+
+        title = self.font_medium.render("IMPORTING SONG", False, GB_4)
+        self.screen.blit(title,
+                        (SCREEN_WIDTH // 2 - title.get_width() // 2, 200))
+
+        # 像素風格 loading 動畫（依時間轉動的方塊）
+        tick = (pygame.time.get_ticks() // 200) % 4
+        dots = "." * (tick + 1)
+        msg = self.font_small.render(f"ANALYZING{dots}", False, GB_3)
+        self.screen.blit(msg,
+                        (SCREEN_WIDTH // 2 - msg.get_width() // 2, 260))
+
+        # 像素方塊轉圈動畫
+        cx, cy, r = SCREEN_WIDTH // 2, 340, 40
+        positions = [(0,-1), (1,0), (0,1), (-1,0)]
+        active = (pygame.time.get_ticks() // 150) % 4
+        for i, (dx, dy) in enumerate(positions):
+            color = GB_5 if i == active else GB_2
+            pygame.draw.rect(self.screen, color,
+                            pygame.Rect(cx + dx*r - 8, cy + dy*r - 8, 16, 16))
+
+        hint = self.font_hint.render(
+            "THIS MAY TAKE A FEW SECONDS...", False, GB_2)
+        self.screen.blit(hint,
+                        (SCREEN_WIDTH // 2 - hint.get_width() // 2, 420))
+
+        pygame.display.flip()
 
     # ══════════════════════════════════════
     #  遊戲主畫面
     # ══════════════════════════════════════
 
-    def draw(self, engine):
+    def draw(self, engine, progress: float = 0.0):
         self.screen.fill(GB_0)
         self._draw_pixel_grid()
         self._draw_lanes()
@@ -498,6 +540,7 @@ class Renderer:
         self._draw_tiles(engine.tiles)
         self._draw_judge_results(engine.judge_results)
         self._draw_hud(engine)
+        self._draw_progress_bar(progress)
         pygame.display.flip()
 
     def _draw_lanes(self):
@@ -581,11 +624,11 @@ class Renderer:
     def _draw_hud(self, engine):
         # 頂部 HUD 條
         pygame.draw.rect(self.screen, GB_1,
-                         pygame.Rect(0, 0, SCREEN_WIDTH, 36))
+                        pygame.Rect(0, 0, SCREEN_WIDTH, 36))
         pygame.draw.line(self.screen, GB_3,
-                         (0, 35), (SCREEN_WIDTH, 35), 2)
+                        (0, 35), (SCREEN_WIDTH, 35), 2)
         pygame.draw.line(self.screen, GB_2,
-                         (0, 37), (SCREEN_WIDTH, 37), 1)
+                        (0, 37), (SCREEN_WIDTH, 37), 1)
 
         # 分隔格線
         for x in [200, 370, 520]:
@@ -619,6 +662,21 @@ class Renderer:
             f"{engine.current_speed:.1f}", False, GB_2)
         self.screen.blit(spd_l, (530, 4))
         self.screen.blit(spd_v, (530, 18))
+
+
+    def _draw_progress_bar(self, progress: float):
+        """畫面最上方的歌曲進度條"""
+        bar_h = 4
+        bar_y = 36
+        pygame.draw.rect(self.screen, GB_1,
+                        pygame.Rect(0, bar_y, SCREEN_WIDTH, bar_h))
+        fill_w = int(SCREEN_WIDTH * max(0.0, min(1.0, progress)))
+        pygame.draw.rect(self.screen, GB_4,
+                        pygame.Rect(0, bar_y, fill_w, bar_h))
+        seg = 10
+        for x in range(0, fill_w, seg):
+            pygame.draw.rect(self.screen, GB_3,
+                            pygame.Rect(x, bar_y, 2, bar_h))
 
     # ══════════════════════════════════════
     #  Game Over 畫面
